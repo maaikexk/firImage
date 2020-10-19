@@ -29,13 +29,11 @@ def load_descriptors(file_names, num_keypoints=200):
     # Load images
     descriptor_extractor = ORB(n_keypoints=num_keypoints)
     descriptors = []
-    # all_descriptors = []
     for im_path in file_names:
         img = plt.imread("data/" + im_path)
         img = rgb2gray(img)
         descriptor_extractor.detect_and_extract(img)
         descriptors.append(descriptor_extractor.descriptors)
-        # all_descriptors.extend(descriptor_extractor.descriptors)
     return np.array(descriptors)
 
 
