@@ -1,29 +1,22 @@
-import h5py
-import json
-import matplotlib.pyplot as plt
-import numpy as np
-from scipy.spatial.distance import squareform
-from skimage.color import rgb2gray
-from skimage.feature import ORB
+import bow
+import evaluate
+import load_data
 
-# Load image file names
-with open("data/W17/W17.json") as f:
-    data = json.load(f)
-    im_paths = data["im_paths"]
-    poses = np.array(data["poses"])
 
-# Load similarity matrix
-with h5py.File("data/W17/W17_similarity.h5", "r") as f:
-    gt_labels = squareform(f["sim"][:].flatten())
+file_names = load_data.load_file_names()[:100]  # TODO: Limit to only first 10 images
+sim_matrix = load_data.load_similarity_matrix()
+descriptors = load_data.load_descriptors(file_names, num_keypoints=200)
+indices_train, indices_test, descriptors_train, descriptors_test = load_data.split_train_test(descriptors)
+all_descriptors_train = load_data.merge_descriptors(descriptors_train)
 
-im_paths = im_paths[:10]  # TODO: Limit to only first 10 images
+centroids = bow.clustering(all_descriptors_train, num_clusters=100)
+bows_train = bow.make_bow(descriptors_train, centroids)
+bows_test = bow.make_bow(descriptors_test, centroids)
 
-# Load images
-descriptor_extractor = ORB(n_keypoints=200)
-descriptors = []
-for im_path in im_paths:
-    img = plt.imread("data/" + im_path)
-    img = rgb2gray(img)
-    descriptor_extractor.detect_and_extract(img)
-    descriptors.extend(descriptor_extractor.descriptors)
-descriptors = np.array(descriptors)
+all_retrieved = [bow.retrieve_images(bows_train, bow_test) for bow_test in bows_test]
+all_retrieved_gt = [evaluate.map_indices(indices_train, retrieved_images)
+                    for retrieved_images in all_retrieved]
+all_relevant_gt = evaluate.all_relevant_images(sim_matrix, indices_test, all_retrieved_gt)
+
+x = evaluate.mean_average_precision(all_relevant_gt, all_retrieved_gt)
+print(x)
