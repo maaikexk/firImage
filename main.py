@@ -4,7 +4,7 @@ import load_data
 import cnn
 
 
-file_names = load_data.load_file_names()[:10]  # TODO: Limit to only first 10 images
+file_names = load_data.load_file_names()[:10] # TODO: Limit to only first 10 images
 sim_matrix = load_data.load_similarity_matrix()
 descriptors = load_data.load_descriptors(file_names, num_keypoints=200)
 indices_train, indices_test, descriptors_train, descriptors_test = load_data.split_train_test(descriptors)
@@ -23,5 +23,14 @@ indices_train, indices_test, descriptors_train, descriptors_test = load_data.spl
 # print(x)
 
 temp_img = cnn.preprocess(file_names)
-triplets = cnn.sampleTriplets(temp_img, indices_train, sim_matrix, 2)
+temp_img = [img[0] for img in temp_img]
+# triplets = cnn.sampleTriplets(temp_img, indices_train, sim_matrix, 2)
+triplet_model = cnn.model_head(cnn.model_base(temp_img[0].shape), cnn.triplet_loss, temp_img[0].shape)
+sample_triplets = cnn.sample_triplets(temp_img, indices_train, sim_matrix)
+triplet_model.fit_generator(sample_triplets, steps_per_epoch=150, epochs=3)
+triplet_model.save("triplet.h5")
+
+model_embeddings = triplet_model.layers[3].predict([temp_img[x] for x in indices_test])
+
+
 # print()
