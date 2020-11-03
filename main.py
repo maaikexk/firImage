@@ -25,9 +25,12 @@ indices_train, indices_test, descriptors_train, descriptors_test = load_data.spl
 temp_img = cnn.preprocess(file_names)
 temp_img = [img[0] for img in temp_img]
 # triplets = cnn.sampleTriplets(temp_img, indices_train, sim_matrix, 2)
-triplet_model = cnn.model_head(cnn.model_base(temp_img[0].shape), cnn.triplet_loss, temp_img[0].shape)
-sample_triplets = cnn.sample_triplets(temp_img, indices_train, sim_matrix)
-triplet_model.fit_generator(sample_triplets, steps_per_epoch=150, epochs=3)
+base_model = cnn.model_base(temp_img[0].shape)
+# head_model.summary()
+triplet_model = cnn.model_head(base_model, cnn.triplet_loss, temp_img[0].shape)
+
+# sample_triplets = cnn.sample_triplets(temp_img, indices_train, sim_matrix)
+triplet_model.fit_generator(cnn.sample_triplets(temp_img, indices_train, sim_matrix), steps_per_epoch=10, epochs=1)
 triplet_model.save("triplet.h5")
 
 model_embeddings = triplet_model.layers[3].predict([temp_img[x] for x in indices_test])
