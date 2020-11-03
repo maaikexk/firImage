@@ -8,12 +8,12 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.preprocessing.image import load_img, img_to_array
 
 
-def preprocess(file_names):
+def preprocess(file_names, image_size):
     images = []
     for im_path in file_names:
         img = load_img("data/" + im_path, color_mode="grayscale")
         img = img_to_array(img).astype("float64")
-        img = transform.resize(img, (28, 28))
+        img = transform.resize(img, image_size)
         img *= 1. / 255
         img = np.expand_dims(img, axis=0)
         images.append(img)

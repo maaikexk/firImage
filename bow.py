@@ -1,6 +1,21 @@
 import numpy as np
+from matplotlib import pyplot as plt
 from scipy.spatial import distance
+from skimage.color import rgb2gray
+from skimage.feature import ORB
 from sklearn.cluster import KMeans
+
+
+def load_descriptors(file_names, num_keypoints=200):
+    # Load images
+    descriptor_extractor = ORB(n_keypoints=num_keypoints)
+    descriptors = []
+    for im_path in file_names:
+        img = plt.imread("data/" + im_path)
+        img = rgb2gray(img)
+        descriptor_extractor.detect_and_extract(img)
+        descriptors.append(descriptor_extractor.descriptors)
+    return np.array(descriptors)
 
 
 def clustering(all_descriptors, num_clusters=100):
