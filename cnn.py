@@ -1,75 +1,56 @@
-import matplotlib.pyplot as plt
-from skimage.color import rgb2gray
 import numpy as np
-# import tensorflow as tf
-from tensorflow.keras.preprocessing.image import load_img, img_to_array
-from skimage import transform
 import random
 from scipy.spatial import distance
-
-from tensorflow.keras import backend as K
-from tensorflow.keras.models import Model
+from skimage import transform
+from tensorflow.keras import backend as k
 from tensorflow.keras.layers import *
+from tensorflow.keras.models import Model
+from tensorflow.keras.preprocessing.image import load_img, img_to_array
 
 
 def preprocess(file_names):
-
     images = []
-
     for im_path in file_names:
         img = load_img("data/" + im_path, color_mode="grayscale")
-        # img = rgb2gray(img)
         img = img_to_array(img).astype("float64")
         img = transform.resize(img, (28, 28))
         img *= 1. / 255
         img = np.expand_dims(img, axis=0)
-
         images.append(img)
-
     return np.array(images)
 
 
 def sample_triplets(images, indices_train, sim_matrix, sample_size=64):
-    len_images = len(indices_train)
+    while True:  # Keep yielding samples forever (as long as they are requested)
+        a, p, n = [], [], []
 
-    triplets = []
-    a = []
-    p = []
-    n = []
-    for i in range(sample_size):
-        while True:
-            index_target = indices_train[random.randint(0, len_images - 1)]
-            indices_pos = [index for index in indices_train if sim_matrix[index_target, index] and index != index_target]
-            indices_neg = [index for index in indices_train if not sim_matrix[index_target, index]]
+        for _ in range(sample_size):  # Generate sample_size samples
+            while True:  # Attempt to generate a sample until succeeded
+                index_target = indices_train[random.randint(0, len(indices_train) - 1)]
+                indices_pos = [i for i in indices_train if sim_matrix[index_target, i] and i != index_target]
+                indices_neg = [i for i in indices_train if not sim_matrix[index_target, i]]
 
-            if len(indices_pos) == 0 or len(indices_neg) == 0:
-                continue
-
-            index_pos = indices_pos[random.randint(0, len(indices_pos)-1)]
-            index_neg = indices_neg[random.randint(0, len(indices_neg)-1)]
+                if len(indices_pos) > 0 and len(indices_neg) > 0:
+                    index_pos = indices_pos[random.randint(0, len(indices_pos) - 1)]
+                    index_neg = indices_neg[random.randint(0, len(indices_neg) - 1)]
+                    break  # Sample is successfully generated, exit while loop
 
             a.append(images[index_target])
             p.append(images[index_pos])
             n.append(images[index_neg])
-            # triplets.append((images[index_target], images[index_pos], images[index_neg]))
 
-            yield [np.array(a), np.array(p), np.array(n)], np.zeros((sample_size, 1)).astype("float32")
+        yield [np.array(a), np.array(p), np.array(n)], np.zeros((sample_size, 1)).astype("float32")
 
 
 def triplet_loss(y_true, y_pred):
-
     alpha = 1.
 
-    anchor_out = y_pred[:, 0:100]
-    positive_out = y_pred[:, 100:200]
-    negative_out = y_pred[:, 200:300]
+    anchor_out, positive_out, negative_out = y_pred[:, 0:100], y_pred[:, 100:200], y_pred[:, 200:300]
+    pos_dist = k.sum(k.abs(anchor_out - positive_out), axis=1)
+    neg_dist = k.sum(k.abs(anchor_out - negative_out), axis=1)
+    probs = k.softmax([pos_dist, neg_dist], axis=0)
 
-    pos_dist = K.sum(K.abs(anchor_out - positive_out), axis=1)
-    neg_dist = K.sum(K.abs(anchor_out - negative_out), axis=1)
-
-    probs = K.softmax([pos_dist, neg_dist], axis=0)
-
-    return K.mean(K.abs(probs[0]) + K.abs(alpha - probs[1]))
+    return k.mean(k.abs(probs[0]) + k.abs(alpha - probs[1]))
 
 
 def model_base(shape):
@@ -84,21 +65,17 @@ def model_base(shape):
     layers = Flatten()(layers)
     layers = Dense(100, activation="relu")(layers)
     model = Model(input_layer, layers)
-    # model.summary()
     return model
 
 
 def model_head(model, loss_function, shape):
-    triplet_model_a = Input(shape)
-    triplet_model_n = Input(shape)
-    triplet_model_p = Input(shape)
-
+    triplet_model_a, triplet_model_p, triplet_model_n = Input(shape), Input(shape), Input(shape)
     triplet_model_out = Concatenate()([model(triplet_model_a), model(triplet_model_p), model(triplet_model_n)])
     triplet_model = Model([triplet_model_a, triplet_model_p, triplet_model_n], triplet_model_out)
-    # triplet_model.summary()
     triplet_model.compile(loss=loss_function, optimizer="adam")
 
     return triplet_model
+
 
 def get_ranking(xs_train, x_test, desired_results=10):
     distances = [distance.euclidean(x_train, x_test) for x_train in xs_train]
