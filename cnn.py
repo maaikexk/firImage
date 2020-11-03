@@ -5,6 +5,7 @@ import numpy as np
 from tensorflow.keras.preprocessing.image import load_img, img_to_array
 from skimage import transform
 import random
+from scipy.spatial import distance
 
 from tensorflow.keras import backend as K
 from tensorflow.keras.models import Model
@@ -41,18 +42,18 @@ def sample_triplets(images, indices_train, sim_matrix, sample_size=64):
             indices_pos = [index for index in indices_train if sim_matrix[index_target, index] and index != index_target]
             indices_neg = [index for index in indices_train if not sim_matrix[index_target, index]]
 
-            if len(indices_pos) != 0 and len(indices_neg) != 0:
-                break
+            if len(indices_pos) == 0 or len(indices_neg) == 0:
+                continue
 
-        index_pos = indices_pos[random.randint(0, len(indices_pos)-1)]
-        index_neg = indices_neg[random.randint(0, len(indices_neg)-1)]
+            index_pos = indices_pos[random.randint(0, len(indices_pos)-1)]
+            index_neg = indices_neg[random.randint(0, len(indices_neg)-1)]
 
-        a.append(images[index_target])
-        p.append(images[index_pos])
-        n.append(images[index_neg])
-        # triplets.append((images[index_target], images[index_pos], images[index_neg]))
+            a.append(images[index_target])
+            p.append(images[index_pos])
+            n.append(images[index_neg])
+            # triplets.append((images[index_target], images[index_pos], images[index_neg]))
 
-    yield [np.array(a), np.array(p), np.array(n)], np.zeros((sample_size, 1)).astype("float32")
+            yield [np.array(a), np.array(p), np.array(n)], np.zeros((sample_size, 1)).astype("float32")
 
 
 def triplet_loss(y_true, y_pred):
@@ -72,7 +73,7 @@ def triplet_loss(y_true, y_pred):
 
 
 def model_base(shape):
-    input_layer = Input((28,28,1))
+    input_layer = Input(shape)
     layers = Conv2D(32, 3, activation="relu")(input_layer)
     layers = Conv2D(32, 3, activation="relu")(layers)
     layers = MaxPool2D(2)(layers)
@@ -83,19 +84,22 @@ def model_base(shape):
     layers = Flatten()(layers)
     layers = Dense(100, activation="relu")(layers)
     model = Model(input_layer, layers)
-    model.summary()
+    # model.summary()
     return model
 
 
 def model_head(model, loss_function, shape):
-    shape = (28,28,1)
     triplet_model_a = Input(shape)
     triplet_model_n = Input(shape)
     triplet_model_p = Input(shape)
 
     triplet_model_out = Concatenate()([model(triplet_model_a), model(triplet_model_p), model(triplet_model_n)])
     triplet_model = Model([triplet_model_a, triplet_model_p, triplet_model_n], triplet_model_out)
-    triplet_model.summary()
+    # triplet_model.summary()
     triplet_model.compile(loss=loss_function, optimizer="adam")
 
     return triplet_model
+
+def get_ranking(xs_train, x_test, desired_results=10):
+    distances = [distance.euclidean(x_train, x_test) for x_train in xs_train]
+    return np.argsort(distances)[:desired_results]
