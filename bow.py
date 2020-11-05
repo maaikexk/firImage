@@ -37,6 +37,9 @@ def make_bow(ind_descriptors, centroids):
     return np.array([bag_of_words(d, centroids) for d in ind_descriptors])
 
 
-def retrieve_images(bows_train, bow_test, desired_results=10):
-    distances = [distance.euclidean(bow_train, bow_test) for bow_train in bows_train]
+def retrieve_images(bows_train, bow_test, desired_results=10, use_euclidean=True):
+    if use_euclidean:
+        distances = [distance.euclidean(bow_train, bow_test) for bow_train in bows_train]
+    else:
+        distances = [distance.cosine(bow_train, bow_test) for bow_train in bows_train]
     return np.argsort(distances)[:desired_results]
