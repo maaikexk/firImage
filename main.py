@@ -27,7 +27,10 @@ def bow_ranking(file_names, indices_train, indices_test, sim_matrix, compute_des
     all_retrieved_gt = [evaluate.map_indices(indices_train, retrieved_images) for retrieved_images in all_retrieved]
     all_relevant_gt = evaluate.all_relevant_images(sim_matrix, indices_test, all_retrieved_gt)
 
-    return evaluate.mean_average_precision(all_relevant_gt, all_retrieved_gt)
+    print("----- BOW RESULTS -----")
+    print("- MAP:  ", evaluate.mean_average_precision(all_relevant_gt, all_retrieved_gt))
+    print("- MP@10:", evaluate.mean_precision_at_k(all_relevant_gt, all_retrieved_gt, 10))
+    print()
 
 
 def cnn_ranking(file_names, indices_train, indices_test, sim_matrix,
@@ -52,7 +55,11 @@ def cnn_ranking(file_names, indices_train, indices_test, sim_matrix,
     cnn_retrieved_gt = [evaluate.map_indices(indices_train, retrieved_images) for retrieved_images in rankings_cnn]
     cnn_relevant_gt = evaluate.all_relevant_images(sim_matrix, indices_test, cnn_retrieved_gt)
 
-    return evaluate.mean_average_precision(cnn_relevant_gt, cnn_retrieved_gt)
+
+    print("----- TCNN RESULTS -----")
+    print("- MAP:  ", evaluate.mean_average_precision(cnn_relevant_gt, cnn_retrieved_gt))
+    print("- MP@10:", evaluate.mean_precision_at_k(cnn_relevant_gt, cnn_retrieved_gt, 10))
+    print()
 
 
 def print_statistics(sim_matrix):
@@ -68,9 +75,9 @@ def main(file_limit=10948):
     file_names = load_data.load_file_names()[:file_limit]
     indices_train, indices_test = load_data.split_train_test(file_limit)
     sim_matrix = load_data.load_similarity_matrix()
-    # print(bow_ranking(file_names, indices_train, indices_test, sim_matrix))
-    print(cnn_ranking(file_names, indices_train, indices_test, sim_matrix,
-                      image_size=(24, 24), epochs=250, steps_per_epoch=100))
+    bow_ranking(file_names, indices_train, indices_test, sim_matrix)
+    cnn_ranking(file_names, indices_train, indices_test, sim_matrix,
+                image_size=(24, 24), epochs=250, steps_per_epoch=100)
 
 
 main()
