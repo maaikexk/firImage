@@ -1,3 +1,4 @@
+import h5py
 import numpy as np
 
 import bow
@@ -6,8 +7,15 @@ import evaluate
 import load_data
 
 
-def bow_ranking(file_names, indices_train, indices_test, sim_matrix):
-    descriptors = bow.load_descriptors(file_names, num_keypoints=200)
+def bow_ranking(file_names, indices_train, indices_test, sim_matrix, compute_descriptors=False):
+    if compute_descriptors:
+        descriptors = bow.load_descriptors(file_names, num_keypoints=200)
+        with h5py.File("descriptors.h5", "w") as file:
+            file.create_dataset("descriptors", data=descriptors)
+    else:
+        with h5py.File("descriptors.h5", "r") as file:
+            descriptors = np.array(file.get("descriptors"))
+
     descriptors_train, descriptors_test = load_data.apply_split(descriptors, indices_train, indices_test)
     all_descriptors_train = load_data.merge_descriptors(descriptors_train)
 
@@ -22,16 +30,20 @@ def bow_ranking(file_names, indices_train, indices_test, sim_matrix):
     return evaluate.mean_average_precision(all_relevant_gt, all_retrieved_gt)
 
 
-def cnn_ranking(file_names, indices_train, indices_test, sim_matrix, image_size, epochs, steps_per_epoch):
+def cnn_ranking(file_names, indices_train, indices_test, sim_matrix,
+                image_size, epochs, steps_per_epoch, train_cnn=False):
     images = cnn.preprocess(file_names, image_size)
     images = [img[0] for img in images]
 
     base_model = cnn.model_base(images[0].shape)
     triplet_model = cnn.model_head(base_model, cnn.triplet_loss, images[0].shape)
 
-    triplet_model.fit_generator(cnn.sample_triplets(images, indices_train, sim_matrix),
-                                epochs=epochs, steps_per_epoch=steps_per_epoch)
-    triplet_model.save("triplet.h5")
+    if train_cnn:
+        triplet_model.fit_generator(cnn.sample_triplets(images, indices_train, sim_matrix),
+                                    epochs=epochs, steps_per_epoch=steps_per_epoch)
+        triplet_model.save("triplet.h5")
+    else:
+        triplet_model.load_weights("triplet.h5")
 
     embeddings_train = triplet_model.layers[3].predict(np.array([images[x] for x in indices_train]))
     embeddings_test = triplet_model.layers[3].predict(np.array([images[x] for x in indices_test]))
@@ -53,3 +65,4 @@ def main(file_limit=10948):
 
 
 main()
+
