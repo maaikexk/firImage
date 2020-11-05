@@ -41,14 +41,14 @@ def mean_average_precision(all_relevant, all_retrieved):
 
 def plot_distribution_precision_at_ten(all_relevant, all_retrieved, file_name):
     pat10s = all_precision_at_k(all_relevant, all_retrieved, 10)
-    precisions = [i * 10 for i in range(11)]
+    precisions = [i / 10 for i in range(11)]
     bars = [0. for _ in range(11)]
     for pat10 in pat10s:
         bars[int(pat10 * 10)] += 1
     bars = [bar / len(all_retrieved) for bar in bars]
     plt.figure()
-    plt.bar(precisions, bars, width=8, color="#2979ff")
-    plt.xlabel("precision")
+    plt.bar(precisions, bars, width=0.08, color="#2979ff")
+    plt.xlabel("precision at 10")
     plt.ylabel("fraction")
     plt.savefig(file_name, dpi=300)
 
