@@ -55,6 +55,14 @@ def cnn_ranking(file_names, indices_train, indices_test, sim_matrix,
     return evaluate.mean_average_precision(cnn_relevant_gt, cnn_retrieved_gt)
 
 
+def print_statistics(sim_matrix):
+    sim_totals = [sum(row) for row in sim_matrix]
+    print("Mean similar images:", sum(sim_totals) / len(sim_totals))
+    print("Std similar images:", np.std(sim_totals))
+    print("Min similar images:", min(sim_totals))
+    print("Max similar images:", max(sim_totals))
+
+
 def main(file_limit=10948):
     file_names = load_data.load_file_names()[:file_limit]
     indices_train, indices_test = load_data.split_train_test(file_limit)
