@@ -56,7 +56,8 @@ def cnn_ranking(file_names, indices_train, indices_test, sim_matrix,
 
 
 def print_statistics(sim_matrix):
-    sim_totals = [sum(row) for row in sim_matrix]
+    sim_totals = [sum(row) - 1 for row in sim_matrix]
+    print("Total similar images:", (sum(sim_totals)) / 2)
     print("Mean similar images:", sum(sim_totals) / len(sim_totals))
     print("Std similar images:", np.std(sim_totals))
     print("Min similar images:", min(sim_totals))
@@ -67,7 +68,7 @@ def main(file_limit=10948):
     file_names = load_data.load_file_names()[:file_limit]
     indices_train, indices_test = load_data.split_train_test(file_limit)
     sim_matrix = load_data.load_similarity_matrix()
-    print(bow_ranking(file_names, indices_train, indices_test, sim_matrix))
+    # print(bow_ranking(file_names, indices_train, indices_test, sim_matrix))
     print(cnn_ranking(file_names, indices_train, indices_test, sim_matrix,
                       image_size=(24, 24), epochs=250, steps_per_epoch=100))
 
