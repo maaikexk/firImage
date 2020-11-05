@@ -27,10 +27,11 @@ def bow_ranking(file_names, indices_train, indices_test, sim_matrix, compute_des
     all_retrieved_gt = [evaluate.map_indices(indices_train, retrieved_images) for retrieved_images in all_retrieved]
     all_relevant_gt = evaluate.all_relevant_images(sim_matrix, indices_test, all_retrieved_gt)
 
-    print("----- BOW RESULTS -----")
+    print("\n----- BOW RESULTS -----")
     print("- MAP:  ", evaluate.mean_average_precision(all_relevant_gt, all_retrieved_gt))
     print("- MP@10:", evaluate.mean_precision_at_k(all_relevant_gt, all_retrieved_gt, 10))
-    print()
+    evaluate.plot_distribution_precision_at_ten(all_relevant_gt, all_retrieved_gt, "plot_bow_pat10")
+    evaluate.plot_distribution_average_precision(all_relevant_gt, all_retrieved_gt, "plot_bow_ap")
 
 
 def cnn_ranking(file_names, indices_train, indices_test, sim_matrix,
@@ -55,11 +56,11 @@ def cnn_ranking(file_names, indices_train, indices_test, sim_matrix,
     cnn_retrieved_gt = [evaluate.map_indices(indices_train, retrieved_images) for retrieved_images in rankings_cnn]
     cnn_relevant_gt = evaluate.all_relevant_images(sim_matrix, indices_test, cnn_retrieved_gt)
 
-
-    print("----- TCNN RESULTS -----")
+    print("\n----- TCNN RESULTS -----")
     print("- MAP:  ", evaluate.mean_average_precision(cnn_relevant_gt, cnn_retrieved_gt))
     print("- MP@10:", evaluate.mean_precision_at_k(cnn_relevant_gt, cnn_retrieved_gt, 10))
-    print()
+    evaluate.plot_distribution_precision_at_ten(cnn_relevant_gt, cnn_retrieved_gt, "plot_cnn_pat10")
+    evaluate.plot_distribution_average_precision(cnn_relevant_gt, cnn_retrieved_gt, "plot_cnn_ap")
 
 
 def print_statistics(sim_matrix):
