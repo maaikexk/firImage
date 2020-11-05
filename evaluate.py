@@ -20,6 +20,11 @@ def all_precision_at_k(all_relevant, all_retrieved, k):
     return [precision_at_k(all_relevant[i], all_retrieved[i], k) for i in range(len(all_relevant))]
 
 
+def mean_precision_at_k(all_relevant, all_retrieved, k):
+    precisions = all_precision_at_k(all_relevant, all_retrieved, k)
+    return sum(precisions) / len(precisions)
+
+
 def average_precision(relevant, retrieved):
     return sum([precision_at_k(relevant, retrieved, k) for k in range(1, len(retrieved) + 1)]) / len(retrieved)
 
