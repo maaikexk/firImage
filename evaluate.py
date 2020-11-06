@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 def map_indices(indices_gt, retrieved_images):
@@ -39,25 +40,50 @@ def mean_average_precision(all_relevant, all_retrieved):
     return sum(all_average_precision(all_relevant, all_retrieved)) / len(all_retrieved)
 
 
-def plot_distribution_precision_at_ten(all_relevant, all_retrieved, file_name):
-    pat10s = all_precision_at_k(all_relevant, all_retrieved, 10)
-    precisions = [i / 10 for i in range(11)]
-    bars = [0. for _ in range(11)]
-    for pat10 in pat10s:
-        bars[int(pat10 * 10)] += 1
-    bars = [bar / len(all_retrieved) for bar in bars]
+def plot_distribution_precision_at_ten(all_relevant_bow_euclidean, all_retrieved_bow_euclidean,
+                                       all_relevant_bow_cosine, all_retrieved_bow_cosine,
+                                       all_relevant_tcnn, all_retrieved_tcnn):
+    pat10s_bow_euclidean = all_precision_at_k(all_relevant_bow_euclidean, all_retrieved_bow_euclidean, 10)
+    pat10s_bow_cosine = all_precision_at_k(all_relevant_bow_cosine, all_retrieved_bow_cosine, 10)
+    pat10s_tcnn = all_precision_at_k(all_relevant_tcnn, all_retrieved_tcnn, 10)
+    precisions = np.array([i / 10 for i in range(11)])
+    bars_bow_euclidean = [0. for _ in range(11)]
+    bars_bow_cosine = [0. for _ in range(11)]
+    bars_tcnn = [0. for _ in range(11)]
+    for pat10 in pat10s_bow_euclidean:
+        bars_bow_euclidean[int(pat10 * 10)] += 1
+    for pat10 in pat10s_bow_cosine:
+        bars_bow_cosine[int(pat10 * 10)] += 1
+    for pat10 in pat10s_tcnn:
+        bars_tcnn[int(pat10 * 10)] += 1
+    bars_bow_euclidean = [bar / len(all_retrieved_bow_euclidean) for bar in bars_bow_euclidean]
+    bars_bow_cosine = [bar / len(all_retrieved_bow_cosine) for bar in bars_bow_cosine]
+    bars_tcnn = [bar / len(all_retrieved_tcnn) for bar in bars_tcnn]
     plt.figure()
-    plt.bar(precisions, bars, width=0.08, color="#2979ff")
+    plt.bar(precisions - 0.025, bars_bow_euclidean, width=0.025, color="#ff1744", label="BOW (Euclidean)")
+    plt.bar(precisions, bars_bow_cosine, width=0.025, color="#00e676", label="BOW (Cosine)")
+    plt.bar(precisions + 0.025, bars_tcnn, width=0.025, color="#2979ff", label="TCNN")
+    plt.legend()
     plt.xlabel("precision at 10")
     plt.ylabel("fraction")
-    plt.savefig(file_name, dpi=300)
+    plt.savefig("plot_pat10", dpi=300)
 
 
-def plot_distribution_average_precision(all_relevant, all_retrieved, file_name):
-    aps = sorted(all_average_precision(all_relevant, all_retrieved), reverse=True)
-    percentiles = [i * 100 / (len(aps) - 1) for i in range(len(aps))]
+def plot_distribution_average_precision(all_relevant_bow_euclidean, all_retrieved_bow_euclidean,
+                                        all_relevant_bow_cosine, all_retrieved_bow_cosine,
+                                        all_relevant_tcnn, all_retrieved_tcnn):
+    aps_bow_euclidean = sorted(all_average_precision(
+        all_relevant_bow_euclidean, all_retrieved_bow_euclidean), reverse=True)
+    aps_bow_cosine = sorted(all_average_precision(
+        all_relevant_bow_cosine, all_retrieved_bow_cosine), reverse=True)
+    aps_tcnn = sorted(all_average_precision(
+        all_relevant_tcnn, all_retrieved_tcnn), reverse=True)
+    percentiles = [i * 100 / (len(aps_tcnn) - 1) for i in range(len(aps_tcnn))]
     plt.figure()
-    plt.plot(percentiles, aps, linewidth=2.5, color="#2979ff")
+    plt.plot(percentiles, aps_bow_euclidean, linewidth=2.5, color="#ff1744", label="BOW (Euclidean)")
+    plt.plot(percentiles, aps_bow_cosine, linewidth=2.5, color="#00e676", label="BOW (Cosine)")
+    plt.plot(percentiles, aps_tcnn, linewidth=2.5, color="#2979ff", label="TCNN")
+    plt.legend()
     plt.xlabel("percentile")
     plt.ylabel("average precision")
-    plt.savefig(file_name, dpi=300)
+    plt.savefig("plot_ap", dpi=300)

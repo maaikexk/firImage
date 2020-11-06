@@ -23,15 +23,10 @@ def bow_ranking(file_names, indices_train, indices_test, sim_matrix, compute_des
     bows_train = bow.make_bow(descriptors_train, centroids)
     bows_test = bow.make_bow(descriptors_test, centroids)
 
-    all_retrieved = [bow.retrieve_images(bows_train, bow_test) for bow_test in bows_test]
-    all_retrieved_gt = [evaluate.map_indices(indices_train, retrieved_images) for retrieved_images in all_retrieved]
-    all_relevant_gt = evaluate.all_relevant_images(sim_matrix, indices_test, all_retrieved_gt)
+    rankings_bow_euclidean = [bow.retrieve_images(bows_train, bow_test, use_euclidean=True) for bow_test in bows_test]
+    rankings_bow_cosine = [bow.retrieve_images(bows_train, bow_test, use_euclidean=False) for bow_test in bows_test]
 
-    print("\n----- BOW RESULTS -----")
-    print("- MAP:  ", evaluate.mean_average_precision(all_relevant_gt, all_retrieved_gt))
-    print("- MP@10:", evaluate.mean_precision_at_k(all_relevant_gt, all_retrieved_gt, 10))
-    evaluate.plot_distribution_precision_at_ten(all_relevant_gt, all_retrieved_gt, "plot_bow_pat10")
-    evaluate.plot_distribution_average_precision(all_relevant_gt, all_retrieved_gt, "plot_bow_ap")
+    return rankings_bow_euclidean, rankings_bow_cosine
 
 
 def cnn_ranking(file_names, indices_train, indices_test, sim_matrix,
@@ -52,15 +47,41 @@ def cnn_ranking(file_names, indices_train, indices_test, sim_matrix,
     embeddings_train = triplet_model.layers[3].predict(np.array([images[x] for x in indices_train]))
     embeddings_test = triplet_model.layers[3].predict(np.array([images[x] for x in indices_test]))
 
-    rankings_cnn = [cnn.get_ranking(embeddings_train, embedding_test) for embedding_test in embeddings_test]
-    cnn_retrieved_gt = [evaluate.map_indices(indices_train, retrieved_images) for retrieved_images in rankings_cnn]
-    cnn_relevant_gt = evaluate.all_relevant_images(sim_matrix, indices_test, cnn_retrieved_gt)
+    return [cnn.get_ranking(embeddings_train, embedding_test) for embedding_test in embeddings_test]
+
+
+def evaluate_results(rankings_bow_euclidean, rankings_bow_cosine, rankings_tcnn,
+                     indices_train, indices_test, sim_matrix):
+    bow_euclidean_retrieved_gt = [evaluate.map_indices(indices_train, retrieved_images)
+                                  for retrieved_images in rankings_bow_euclidean]
+    bow_euclidean_relevant_gt = evaluate.all_relevant_images(sim_matrix, indices_test, bow_euclidean_retrieved_gt)
+
+    bow_cosine_retrieved_gt = [evaluate.map_indices(indices_train, retrieved_images)
+                               for retrieved_images in rankings_bow_cosine]
+    bow_cosine_relevant_gt = evaluate.all_relevant_images(sim_matrix, indices_test, bow_cosine_retrieved_gt)
+
+    tcnn_retrieved_gt = [evaluate.map_indices(indices_train, retrieved_images)
+                         for retrieved_images in rankings_tcnn]
+    tcnn_relevant_gt = evaluate.all_relevant_images(sim_matrix, indices_test, tcnn_retrieved_gt)
+
+    print("\n----- BOW EUCLIDEAN RESULTS -----")
+    print("- MAP:  ", evaluate.mean_average_precision(bow_euclidean_relevant_gt, bow_euclidean_retrieved_gt))
+    print("- MP@10:", evaluate.mean_precision_at_k(bow_euclidean_relevant_gt, bow_euclidean_retrieved_gt, 10))
+
+    print("\n----- BOW COSINE RESULTS -----")
+    print("- MAP:  ", evaluate.mean_average_precision(bow_cosine_relevant_gt, bow_cosine_retrieved_gt))
+    print("- MP@10:", evaluate.mean_precision_at_k(bow_cosine_relevant_gt, bow_cosine_retrieved_gt, 10))
 
     print("\n----- TCNN RESULTS -----")
-    print("- MAP:  ", evaluate.mean_average_precision(cnn_relevant_gt, cnn_retrieved_gt))
-    print("- MP@10:", evaluate.mean_precision_at_k(cnn_relevant_gt, cnn_retrieved_gt, 10))
-    evaluate.plot_distribution_precision_at_ten(cnn_relevant_gt, cnn_retrieved_gt, "plot_cnn_pat10")
-    evaluate.plot_distribution_average_precision(cnn_relevant_gt, cnn_retrieved_gt, "plot_cnn_ap")
+    print("- MAP:  ", evaluate.mean_average_precision(tcnn_relevant_gt, tcnn_retrieved_gt))
+    print("- MP@10:", evaluate.mean_precision_at_k(tcnn_relevant_gt, tcnn_retrieved_gt, 10))
+
+    evaluate.plot_distribution_average_precision(bow_euclidean_relevant_gt, bow_euclidean_retrieved_gt,
+                                                 bow_cosine_relevant_gt, bow_cosine_retrieved_gt,
+                                                 tcnn_relevant_gt, tcnn_retrieved_gt)
+    evaluate.plot_distribution_precision_at_ten(bow_euclidean_relevant_gt, bow_euclidean_retrieved_gt,
+                                                bow_cosine_relevant_gt, bow_cosine_retrieved_gt,
+                                                tcnn_relevant_gt, tcnn_retrieved_gt)
 
 
 def print_statistics(sim_matrix):
@@ -76,9 +97,11 @@ def main(file_limit=10948):
     file_names = load_data.load_file_names()[:file_limit]
     indices_train, indices_test = load_data.split_train_test(file_limit)
     sim_matrix = load_data.load_similarity_matrix()
-    bow_ranking(file_names, indices_train, indices_test, sim_matrix)
-    cnn_ranking(file_names, indices_train, indices_test, sim_matrix,
-                image_size=(24, 24), epochs=250, steps_per_epoch=100)
+    rankings_bow_euclidean, rankings_bow_cosine = bow_ranking(file_names, indices_train, indices_test, sim_matrix)
+    rankings_tcnn = cnn_ranking(file_names, indices_train, indices_test, sim_matrix,
+                                image_size=(24, 24), epochs=250, steps_per_epoch=100)
+    evaluate_results(rankings_bow_euclidean, rankings_bow_cosine, rankings_tcnn,
+                     indices_train, indices_test, sim_matrix)
 
 
 main()
