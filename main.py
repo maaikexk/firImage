@@ -7,7 +7,7 @@ import evaluate
 import load_data
 
 
-def bow_ranking(file_names, indices_train, indices_test, sim_matrix, compute_descriptors=False):
+def bow_ranking(file_names, indices_train, indices_test, sim_matrix, compute_descriptors=True):
     if compute_descriptors:
         descriptors = bow.load_descriptors(file_names, num_keypoints=200)
         with h5py.File("descriptors.h5", "w") as file:
@@ -30,7 +30,7 @@ def bow_ranking(file_names, indices_train, indices_test, sim_matrix, compute_des
 
 
 def cnn_ranking(file_names, indices_train, indices_test, sim_matrix,
-                image_size, epochs, steps_per_epoch, train_cnn=False):
+                image_size, epochs, steps_per_epoch, train_cnn=True):
     images = cnn.preprocess(file_names, image_size)
     images = [img[0] for img in images]
 
